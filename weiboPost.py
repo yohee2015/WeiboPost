@@ -11,7 +11,7 @@ import time
 
 import requests
 from config import *
-
+from requests.exceptions import ConnectionError
 
 class SendWeiboMsg():
     def __init__(self):
@@ -23,12 +23,22 @@ class SendWeiboMsg():
             'Host': 'weibo.com',
             'Origin': 'https://weibo.com',
             'Referer': 'https://weibo.com/u/1669879400?is_all=1',
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Connection':'keep-alive'
         }
-
         self.cookies = {
             'Cookie': 'SINAGLOBAL=2595098081165.772.1528019870909; login_sid_t=b17543f101602a5e43570143a55f88ae; cross_origin_proto=SSL; TC-Ugrow-G0=370f21725a3b0b57d0baaf8dd6f16a18; TC-V5-G0=40eeee30be4a1418bde327baf365fcc0; wb_view_log=1280*10241; _s_tentry=www.baidu.com; UOR=,,www.baidu.com; Apache=6901247442331.131.1529814105269; ULV=1529814105278:11:11:2:6901247442331.131.1529814105269:1529812994719; SSOLoginState=1529814105; SCF=At74JyOmfjXj3ufUlUIhEkxKlQOSdsuwMg3H25ozlX-eK4ynGMe0wOYInmGih350KAFQlA8J12DmViDnMS8TRb0.; SUB=_2A252K2wJDeRhGeNL41IS8SnIyziIHXVVQdrBrDV8PUNbmtAKLRSskW9NSC6L22qFeWeeB08k_Q8Bef2NTTwcDvlt; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9W5sEMYmfjmgcWY1qhONLzeq5JpX5K2hUgL.Fo-f1h50eKMXehB2dJLoI0i29g8ETCH8SE-ReEHWxFH8SCHFSEHFSFH8SCHFeF-RxbH8SE-4SF-4BEH8SCHFxb-Re7tt; SUHB=06Z1Vh1SgW9Q7R; ALF=1561350104; un=yohee2015@sina.com; wvr=6; TC-Page-G0=0dba63c42a7d74c1129019fa3e7e6e7c'
         }
+        # rcookies = self.getCookies()
+        # if rcookies:
+        #     self.cookies = rcookies
+        # else:
+        #     print('cookies 失效了')
+    def getCookies(self):
+        cookiesUrl='http://127.0.0.1:5000/weibo/random'
+        html = requests.get(cookiesUrl)
+        print(time.strftime('%Y-%m-%d %H:%M:%S'), html.text)
+        return html
     '''
     超话发博
     '''
@@ -51,6 +61,7 @@ class SendWeiboMsg():
             'pub_type': 'dialog',
             '_t': '0'
         }
+        print(self.cookies)
         html = requests.post(self.postUrl, data=postData, cookies=self.cookies, headers=self.headers)
         print(time.strftime('%Y-%m-%d %H:%M:%S'), html.text)
 
@@ -66,14 +77,21 @@ class SendWeiboMsg():
             'isReEdit': 'false',
             '_t': '0'
         }
-        html = requests.post(self.zfUrl, data=zfData, cookies=self.cookies, headers=self.headers)
-        code = html.json()['code']
-        print(code, time.strftime('%Y-%m-%d %H:%M:%S'), msg)
-        return code
+        try:
+            html = requests.post(self.zfUrl, data=zfData, cookies=self.cookies, headers=self.headers)
+            code = html.json()['code']
+            print(code, time.strftime('%Y-%m-%d %H:%M:%S'), msg)
+            return code
+        except ConnectionError as e:
+            print('网络连接异常，休息10分钟再继续！', time.strftime('%Y-%m-%d %H:%M:%S'), e.args[0].reason)
+            return None
+
+
 
 
 if __name__ == '__main__':
     sendWeiboMsg = SendWeiboMsg()
+    #sendWeiboMsg.getCookies()
     for i in range(TODAY_TARGET_COUNT):
         msg = random.choice(MESSAGE)
         mid = random.choice(MID_LIST)
@@ -82,4 +100,4 @@ if __name__ == '__main__':
             print('出错了！')
             print('发布失败，休息10分钟再继续！', code, time.strftime('%Y-%m-%d %H:%M:%S'), msg)
             time.sleep(600)
-        time.sleep(random.randint(180, 480))
+        time.sleep(random.randint(80, 280))
